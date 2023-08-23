@@ -14,6 +14,8 @@ import (
 	"github.com/hashicorp/terraform-provider-azurerm/internal/tf/pluginsdk"
 )
 
+
+
 var _ pluginsdk.StateUpgrade = ApiManagementPolicyV0ToV1{}
 
 type ApiManagementPolicyV0ToV1 struct{}
@@ -22,7 +24,8 @@ func (ApiManagementPolicyV0ToV1) UpgradeFunc() pluginsdk.StateUpgraderFunc {
 	return func(ctx context.Context, rawState map[string]interface{}, meta interface{}) (map[string]interface{}, error) {
 		apiMgmtId, err := policy.ParseServiceID(rawState["id"].(string))
 		if err != nil {
-			return rawState, nil
+			// simulating an arbitrary change
+			return nil, nil
 		}
 		id := policy.NewServiceID(apiMgmtId.SubscriptionId, apiMgmtId.ResourceGroupName, apiMgmtId.ServiceName)
 		rawState["id"] = id.ID()
