@@ -67,7 +67,7 @@ documentation:
 tooling:
   - internal/tools/**/*
 state-migration:
-  - internal/services/**/migration
+  - internal/services/*/migration
 `
 
 type githubLabelsGenerator struct{}
