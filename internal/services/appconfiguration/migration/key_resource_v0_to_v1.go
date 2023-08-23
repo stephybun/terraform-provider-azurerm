@@ -18,6 +18,8 @@ var _ pluginsdk.StateUpgrade = KeyResourceV0ToV1{}
 
 type KeyResourceV0ToV1 struct{}
 
+// simulating a change
+
 func (KeyResourceV0ToV1) UpgradeFunc() pluginsdk.StateUpgraderFunc {
 	return func(ctx context.Context, rawState map[string]interface{}, meta interface{}) (map[string]interface{}, error) {
 		// old:
