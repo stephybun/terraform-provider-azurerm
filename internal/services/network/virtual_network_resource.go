@@ -25,15 +25,11 @@ import (
 	"github.com/hashicorp/go-azure-sdk/resource-manager/network/2023-11-01/subnets"
 	"github.com/hashicorp/go-azure-sdk/resource-manager/network/2024-05-01/ipampools"
 	"github.com/hashicorp/go-azure-sdk/resource-manager/network/2024-05-01/virtualnetworks"
-	"github.com/hashicorp/go-cty/cty/msgpack"
 	"github.com/hashicorp/terraform-plugin-framework/list"
 	listschema "github.com/hashicorp/terraform-plugin-framework/list/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
-	"github.com/hashicorp/terraform-plugin-go/tfprotov5"
-	"github.com/hashicorp/terraform-plugin-go/tftypes"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
-	"github.com/hashicorp/terraform-provider-azurerm/helpers/hcl2shim"
 	"github.com/hashicorp/terraform-provider-azurerm/helpers/tf"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/clients"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/locks"
@@ -47,7 +43,7 @@ import (
 
 //go:generate go run ../../tools/generator-tests resourceidentity -resource-name virtual_network -service-package-name network -properties "name,resource_group_name" -known-values "subscription_id:data.Subscriptions.Primary"
 
-var _ sdk.ListResource = &VirtualNetworkListResource{}
+var _ sdk.ListResourceWithProtoSchemas = &VirtualNetworkListResource{}
 
 type VirtualNetworkListResource struct {
 	sdk.ListResourceMetadata
@@ -57,29 +53,21 @@ func NewVirtualNetworkListResource() list.ListResource {
 	return &VirtualNetworkListResource{}
 }
 
-func (r *VirtualNetworkListResource) Metadata(ctx context.Context, _ list.MetadataRequest, resp *list.MetadataResponse) {
+func (r *VirtualNetworkListResource) Metadata(_ context.Context, _ resource.MetadataRequest, resp *resource.MetadataResponse) {
 	resp.TypeName = VirtualNetworkResourceName
+}
 
-	// The List resource depends on a legacy resource so we supply the resource and identity schema here
+func (r *VirtualNetworkListResource) Schemas(ctx context.Context, resp *list.SchemaResponse) {
 	vnet := resourceVirtualNetwork()
-	resp.ProtoV5Schema = func() *tfprotov5.Schema {
-		return vnet.ProtoSchema(ctx)
-	}
-
-	resp.ProtoV5IdentitySchema = func() *tfprotov5.ResourceIdentitySchema {
-		s, err := vnet.ProtoIdentitySchema(ctx)
-		if err != nil {
-			sdk.SetResponseErrorDiagnostic(resp, "getting identity schema", err)
-		}
-		return s
-	}
+	resp.ProtoV5Schema = vnet.ProtoSchema(ctx)
+	resp.ProtoV5IdentitySchema = vnet.ProtoIdentitySchema(ctx)
 }
 
 func (r *VirtualNetworkListResource) Configure(_ context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
 	r.Defaults(req, resp)
 }
 
-func (r *VirtualNetworkListResource) ListResourceConfigSchema(_ context.Context, _ list.ListResourceSchemaRequest, resp *list.ListResourceSchemaResponse) {
+func (r *VirtualNetworkListResource) ListResourceConfigSchema(ctx context.Context, _ list.ListResourceSchemaRequest, resp *list.ListResourceSchemaResponse) {
 	resp.Schema = listschema.Schema{
 		Attributes: map[string]listschema.Attribute{
 			"resource_group_name": listschema.StringAttribute{
@@ -94,7 +82,6 @@ type VirtualNetworkListModel struct {
 }
 
 func (r *VirtualNetworkListResource) List(ctx context.Context, req list.ListRequest, stream *list.ListResultsStream) {
-	// TODO timeouts
 	client := r.Client.Network.VirtualNetworks
 	ctx, cancel := context.WithTimeout(ctx, time.Minute*5)
 	defer cancel()
@@ -118,9 +105,9 @@ func (r *VirtualNetworkListResource) List(ctx context.Context, req list.ListRequ
 		virtualNetworks = *resp.Model
 	}
 
-	stream.Proto5Results = func(push func(tfprotov5.ListResourceResult) bool) {
+	stream.Results = func(push func(list.ListResult) bool) {
 		for _, vnet := range virtualNetworks {
-			result := req.NewListResultProtoV5()
+			result := req.NewListResult()
 			result.DisplayName = pointer.From(vnet.Name)
 
 			id, err := commonids.ParseVirtualNetworkID(*vnet.Id)
@@ -129,44 +116,9 @@ func (r *VirtualNetworkListResource) List(ctx context.Context, req list.ListRequ
 				return
 			}
 
-			// ++++++ Getting and setting Identity ++++++
-
-			// Notes:
-			// 	* We could potentially pass in the ProtoV5 schemas set in Metadata via the Request to reduce repetition here
-			// 	* The resource identity objects should typically be of a size that's manageable for provider devs to create
-
 			vNetResource := resourceVirtualNetwork()
 
-			identitySchema, err := vNetResource.ProtoIdentitySchema(ctx)
-			if err != nil {
-				sdk.SetResponseErrorDiagnostic(resp, "getting identity schema", err)
-			}
-
-			idValue := map[string]tftypes.Value{
-				"subscription_id":     tftypes.NewValue(tftypes.String, id.SubscriptionId),
-				"resource_group_name": tftypes.NewValue(tftypes.String, id.ResourceGroupName),
-				"name":                tftypes.NewValue(tftypes.String, id.VirtualNetworkName),
-			}
-
-			val, err := tfprotov5.NewDynamicValue(identitySchema.ValueType(), tftypes.NewValue(identitySchema.ValueType(), idValue))
-			if err != nil {
-				sdk.SetResponseErrorDiagnostic(stream.Results, "creating dynamic value", err)
-				return
-			}
-
-			result.Identity = &tfprotov5.ResourceIdentityData{
-				IdentityData: &val,
-			}
-			// ++++++++++++++++++++++++++++++++++++++++++
-
-			// ++++++ Getting and setting Resource ++++++
-
-			// Notes:
-			// 	* Ideally the same technique is used to prepare and encode the resource data like for identity above
-			//  * Can a similar helper like hcl2shim.HCL2ValueFromFlatmap be written that returns a tftypes.Value out of
-			//    a flat map of attributes with the ProtoV5 schema provided as guidance?
-			resourceSchema := vNetResource.CoreConfigSchema()
-
+			// TODO add this as a function on the resource?
 			rd := vNetResource.Data(&terraform.InstanceState{ID: id.ID()})
 
 			err = resourceVirtualNetworkEncode(rd, *id, &vnet)
@@ -175,24 +127,15 @@ func (r *VirtualNetworkListResource) List(ctx context.Context, req list.ListRequ
 				return
 			}
 
-			state := rd.State()
-
-			newStateVal, err := hcl2shim.HCL2ValueFromFlatmap(state.Attributes, resourceSchema.ImpliedType())
-			if err != nil {
-				sdk.SetResponseErrorDiagnostic(stream.Results, "converting state to HCL2 value", err)
+			if err := result.Identity.Set(ctx, rd.TfTypeIdentity()); err != nil {
+				sdk.SetResponseErrorDiagnostic(stream.Results, "setting identity data", err)
 				return
 			}
 
-			stateMP, err := msgpack.Marshal(newStateVal, resourceSchema.ImpliedType())
-			if err != nil {
-				sdk.SetResponseErrorDiagnostic(stream.Results, "marshalling state to msgpack", err)
+			if err := result.Resource.Set(ctx, rd.TfTypeResource()); err != nil {
+				sdk.SetResponseErrorDiagnostic(stream.Results, "setting resource data", err)
 				return
 			}
-
-			result.Resource = &tfprotov5.DynamicValue{
-				MsgPack: stateMP,
-			}
-			// ++++++++++++++++++++++++++++++++++++++++++
 
 			if !push(result) {
 				return

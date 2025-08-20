@@ -11,6 +11,12 @@ type ListResource interface {
 	list.ListResourceWithConfigure
 }
 
+type ListResourceWithProtoSchemas interface {
+	ListResource
+
+	list.ListResourceWithProtoSchemas
+}
+
 type ListResourceMetadata struct {
 	Client *clients.Client
 

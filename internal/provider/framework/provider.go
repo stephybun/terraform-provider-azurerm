@@ -531,6 +531,7 @@ func (p *azureRmFrameworkProvider) Configure(ctx context.Context, request provid
 		response.ResourceData = v
 		response.DataSourceData = v
 		response.EphemeralResourceData = v
+		response.ListResourceData = v
 	} else {
 		response.Diagnostics.Append(request.Config.Get(ctx, &data)...)
 		if response.Diagnostics.HasError() {
