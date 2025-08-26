@@ -57,10 +57,10 @@ func (r *VirtualNetworkListResource) Metadata(_ context.Context, _ resource.Meta
 	resp.TypeName = VirtualNetworkResourceName
 }
 
-func (r *VirtualNetworkListResource) Schemas(ctx context.Context, resp *list.SchemaResponse) {
+func (r *VirtualNetworkListResource) RawV5Schemas(ctx context.Context, _ list.RawV5SchemaRequest, resp *list.RawV5SchemaResponse) {
 	vnet := resourceVirtualNetwork()
-	resp.ProtoV5Schema = vnet.ProtoSchema(ctx)
-	resp.ProtoV5IdentitySchema = vnet.ProtoIdentitySchema(ctx)
+	resp.ProtoV5Schema = vnet.ProtoSchema(ctx)()
+	resp.ProtoV5IdentitySchema = vnet.ProtoIdentitySchema(ctx)()
 }
 
 func (r *VirtualNetworkListResource) Configure(_ context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
@@ -107,7 +107,7 @@ func (r *VirtualNetworkListResource) List(ctx context.Context, req list.ListRequ
 
 	stream.Results = func(push func(list.ListResult) bool) {
 		for _, vnet := range virtualNetworks {
-			result := req.NewListResult()
+			result := req.NewListResult(ctx)
 			result.DisplayName = pointer.From(vnet.Name)
 
 			id, err := commonids.ParseVirtualNetworkID(*vnet.Id)
@@ -119,7 +119,10 @@ func (r *VirtualNetworkListResource) List(ctx context.Context, req list.ListRequ
 			vNetResource := resourceVirtualNetwork()
 
 			// TODO add this as a function on the resource?
-			rd := vNetResource.Data(&terraform.InstanceState{ID: id.ID()})
+			//rd := vNetResource.Data(&terraform.InstanceState{ID: id.ID()})
+			rd := vNetResource.Data(&terraform.InstanceState{})
+
+			rd.SetId(id.ID())
 
 			err = resourceVirtualNetworkEncode(rd, *id, &vnet)
 			if err != nil {
@@ -127,12 +130,22 @@ func (r *VirtualNetworkListResource) List(ctx context.Context, req list.ListRequ
 				return
 			}
 
-			if err := result.Identity.Set(ctx, rd.TfTypeIdentity()); err != nil {
+			tfTypeIdentity, err := rd.TfTypeIdentityState()
+			if err != nil {
+				// TODO
+			}
+
+			if err := result.Identity.Set(ctx, *tfTypeIdentity); err != nil {
 				sdk.SetResponseErrorDiagnostic(stream.Results, "setting identity data", err)
 				return
 			}
 
-			if err := result.Resource.Set(ctx, rd.TfTypeResource()); err != nil {
+			tfTypeResource, err := rd.TfTypeResourceState()
+			if err != nil {
+				// TODO
+			}
+
+			if err := result.Resource.Set(ctx, *tfTypeResource); err != nil {
 				sdk.SetResponseErrorDiagnostic(stream.Results, "setting resource data", err)
 				return
 			}

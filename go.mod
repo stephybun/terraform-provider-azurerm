@@ -25,11 +25,11 @@ require (
 	github.com/hashicorp/go-uuid v1.0.3
 	github.com/hashicorp/go-version v1.7.0
 	github.com/hashicorp/terraform-json v0.26.0
-	github.com/hashicorp/terraform-plugin-framework v1.16.0-beta.1.0.20250820152235-25b4b87d5318
+	github.com/hashicorp/terraform-plugin-framework v1.16.0-beta.1.0.20250826091022-afb7e09a233a
 	github.com/hashicorp/terraform-plugin-framework-validators v0.18.0
 	github.com/hashicorp/terraform-plugin-go v0.29.0-beta.1
 	github.com/hashicorp/terraform-plugin-mux v0.21.0-alpha.1
-	github.com/hashicorp/terraform-plugin-sdk/v2 v2.37.1-0.20250821093415-fc843325328d
+	github.com/hashicorp/terraform-plugin-sdk/v2 v2.37.1-0.20250826074230-9419032037aa
 	github.com/hashicorp/terraform-plugin-testing v1.13.1
 	github.com/iancoleman/strcase v0.3.0
 	github.com/jackofallops/giovanni v0.28.0
@@ -96,7 +96,7 @@ require (
 	github.com/vmihailenco/msgpack v4.0.4+incompatible // indirect
 	github.com/vmihailenco/msgpack/v5 v5.4.1 // indirect
 	github.com/vmihailenco/tagparser/v2 v2.0.0 // indirect
-	github.com/zclconf/go-cty v1.16.3 // indirect
+	github.com/zclconf/go-cty v1.16.4 // indirect
 	golang.org/x/mod v0.26.0 // indirect
 	golang.org/x/net v0.42.0 // indirect
 	golang.org/x/oauth2 v0.30.0 // indirect
