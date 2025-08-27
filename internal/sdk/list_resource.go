@@ -11,10 +11,10 @@ type ListResource interface {
 	list.ListResourceWithConfigure
 }
 
-type ListResourceWithProtoSchemas interface {
+type ListResourceWithRawV5Schemas interface {
 	ListResource
 
-	list.ListResourceWithProtoSchemas
+	list.ListResourceWithRawV5Schemas
 }
 
 type ListResourceMetadata struct {

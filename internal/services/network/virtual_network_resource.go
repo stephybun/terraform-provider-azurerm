@@ -43,7 +43,7 @@ import (
 
 //go:generate go run ../../tools/generator-tests resourceidentity -resource-name virtual_network -service-package-name network -properties "name,resource_group_name" -known-values "subscription_id:data.Subscriptions.Primary"
 
-var _ sdk.ListResourceWithProtoSchemas = &VirtualNetworkListResource{}
+var _ sdk.ListResourceWithRawV5Schemas = &VirtualNetworkListResource{}
 
 type VirtualNetworkListResource struct {
 	sdk.ListResourceMetadata
@@ -118,8 +118,6 @@ func (r *VirtualNetworkListResource) List(ctx context.Context, req list.ListRequ
 
 			vNetResource := resourceVirtualNetwork()
 
-			// TODO add this as a function on the resource?
-			//rd := vNetResource.Data(&terraform.InstanceState{ID: id.ID()})
 			rd := vNetResource.Data(&terraform.InstanceState{})
 
 			rd.SetId(id.ID())
